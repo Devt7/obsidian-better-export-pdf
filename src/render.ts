@@ -68,7 +68,21 @@ body {
     break-inside: avoid;
     break-after: auto;
   }
+  .pagedjs_page_break { 
+  page-break-before: always;
+    border-top: none!important; 
+    background-image: none!important
 }
+}
+
+/* Paged.js styles for page breaks */
+.pagedjs_page_break { 
+  page-break-before: always;
+  height: 20px;
+  width: 100%;
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 20' width='100%25' height='20' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='wave-1729574810686' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='0' y2='20'%3E%3Cstop offset='100%25' stop-color='%23ff6c00'/%3E%3Cstop offset='100%25' stop-color='%23ffffff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M -98.46 14 L -49.23 11 0 11 L 49.23 6 98.46 7 L 147.69 4 196.92 7 L 246.15 11 295.38 17 L 344.62 6 393.85 14 L 443.08 11 492.31 18 L 541.54 14 590.77 18 L 640 8 689.23 13 L 738.46 14 787.69 16 L 836.92 2 886.15 6 L 935.38 13 984.62 16 L 1033.85 5 1083.08 6 L 1132.31 11 1181.54 15 L 1230.77 14 1280 15 L 1329.23 10 1378.46 11' fill='none' stroke='url(%23wave-1729574810686)' stroke-width='3'%3E%3C/path%3E%3C/svg%3E");
+  }
+
 `;
 
 export function getPatchStyle() {
@@ -151,6 +165,9 @@ export async function renderMarkdown(
   const viewEl = printEl.createDiv({
     cls: "markdown-preview-view markdown-rendered " + cssclasses.join(" "),
   });
+  // Add this line after creating the `viewEl`
+  viewEl.classList.add("pagedjs_enabled");
+
   app.vault.cachedRead(file);
 
   // @ts-ignore
@@ -264,7 +281,6 @@ export async function renderMarkdown(
   comp.unload();
   printEl.remove();
   doc.title = title;
-
   console.log(`md render time:${new Date().getTime() - startTime}ms`);
   return { doc, frontMatter, file };
 }
@@ -319,6 +335,31 @@ export function createWebview(scale = 1.25) {
     `,
   );
   webview.nodeintegration = true;
+  webview.addEventListener("dom-ready", () => {
+    // Webview is ready, now attach the event listener
+    webview.executeJavaScript(`
+      document.body.addEventListener('click', (event) => {
+        const clickedElement = event.target;
+    
+        // Check if a page break already exists *before* the clicked element
+        const existingPageBreak = clickedElement.previousElementSibling;
+        if (existingPageBreak && existingPageBreak.classList.contains('pagedjs_page_break')) {
+          // Remove the existing page break
+          existingPageBreak.remove();
+        } else {
+          // Create the page break element
+          const pageBreak = document.createElement('div');
+          pageBreak.classList.add('pagedjs_page_break');
+    
+          // Insert the page break before the clicked element
+          clickedElement.parentNode?.insertBefore(pageBreak, clickedElement);
+        }
+      });
+    `);
+    
+    
+    
+  });
   return webview;
 }
 
